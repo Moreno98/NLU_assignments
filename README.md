@@ -22,7 +22,7 @@ python3 -m spacy download en_core_web_sm
 pip3 install -U nltk
 pip3 install -U scikit-learn
 ```
-```Note```: the optional part of the assignment can take some time due to the training, you may want to comment that part.  
+```Note```: the optional part of the assignment can take some time due to the training, you may want to comment that part, in any case I recommend you to run the colab notebook directly.
 To run the code:
 ```
 git clone https://github.com/Moreno98/NLU_assignments
