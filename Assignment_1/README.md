@@ -16,7 +16,7 @@ For the first point of the assignment I create two functions: path_to_root and d
     * Process the sentence
     * For each token extracts its dependency path
 
-```
+```python
 def path_to_root(sentence):
   doc = process_sentence(sentence)
   d = {}
@@ -33,7 +33,7 @@ def path_to_root(sentence):
     * starting from the dependency of the token itself, retrace the dependency tree until finding the ROOT (token.head == token)
     * return the reverse of the dependency list in order to output ROOT -> token path
 
-```
+```python
 def dependency_path(token):
   path = [token.dep_] # save the first dependency (the one of the token)
   exit = False
@@ -58,7 +58,7 @@ For this point of the assignment there are two functions: get_subtree and get_su
     * Output: the list of the depentents from the token (its subtree)
     * Implementation: creation of a list containing the tokens inside its subtree
    
-```
+```python
 def get_subtree(token):
   return [dipendent for dipendent in token.subtree]
 ```
@@ -72,7 +72,7 @@ def get_subtree(token):
       *   Process the sentence
       *   For each token extracts its subtree using get_subtree
  
- ```
+ ```python
 def get_subtrees(sentence):
   doc = process_sentence(sentence)
   d = {}
@@ -97,7 +97,7 @@ in fact the created sets, which delete the duplicates, will be equal, but the in
       * Extract every subtree of the sentence using get_subtrees
       * Compare the input sequence with each subtree, if one matches the input sequence return True, False otherwise
 
-```
+```python
 def check_subtree2(sentence, sequence):
   subtrees = get_subtrees(sentence)
   for token in subtrees:
@@ -119,7 +119,7 @@ This function takes in input a span as a string (not necessary a meaningful sent
     * parse the span to have a Doc object
     * from the Doc object, take the Span of the entire sequence and return its root
 
-```
+```python
 def head_span(span):
   doc = process_sentence(span)
   return doc[:].root.text
@@ -157,7 +157,7 @@ The below function takes in input a sentence and it returns a dict with the ```S
     * For each of these tokens save its subtree
     * For each different type of subject of the sentence a list is created with each subtree, these lists are then returned in the final dict
     
-```   
+```python
 def extract(sentence):
   doc = process_sentence(sentence)
   d = {}
@@ -192,7 +192,7 @@ For the optional part I tried to extract some new features but I could not find 
 I extended the default ```TransitionParser``` class in order to override the method ```train``` of the class; in this way I can change the model. I choose the MLP classifier which is a 
 multi layer perceptron from the scikit learn library. Since the neural networks can have a fluctuation on the accuracy I trained and evaluated the model 10 times and I took the average.
 
-```
+```python
 class My_TransitionParser(TransitionParser):
 
   def __init__(self, alg_option):
