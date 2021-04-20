@@ -193,7 +193,7 @@ I extended the default ```TransitionParser``` class in order to override the met
 multi layer perceptron from the scikit learn library. Since the neural networks can have a fluctuation on the accuracy I trained and evaluated the model 10 times and I took the average.
 
 ```python
-class My_TransitionParser(TransitionParser):
+class TransitionParser_MLP(TransitionParser):
 
   def __init__(self, alg_option):
     TransitionParser.__init__(self, alg_option)
