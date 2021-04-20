@@ -135,7 +135,7 @@ Since the objects are specified (direct and indirect) but not the subject I deci
 a passive nominal subject, so returning just the nominal subject is not enough. For instance in the sentence ```"Luca has been killed by a car"``` the nominal subject is ```None``` but the subject of the sentence is Luca which is the Nominal Subject Passive.  
 Moreover I thought about returning just one subject (the most import one), but after some testing I reached the conclusion that there are too many possibilities to return just a subject. For example the sentence ```"There is a woman in the bus who is called Diana"``` 
 has two types of subject: ```Nominal passive subject "who"``` and ```Expletive subject "There"```, so I decided to return both in two separated lists inside the list "Subject" of the output dict.  
-The below function takes in input a sentence and it returns a dict with the ```Subject```, ```Direct Object``` and ```Indirect Object``` as keys and the corrisponding span as values (with a list of span for the subject as explained previously).  
+The below function takes in input a sentence and it returns a dict with the ```Subject```, ```Direct Object``` and ```Indirect Object``` as keys and the corrisponding span as values (with a list of spans for the subject as explained previously).  
 
 * extract(sentence)
   * Input: the sentence
