@@ -100,17 +100,21 @@ def convert_spacy(token, parent=None):
 ```
 ---
 SpaCy tokenizes the text in a different way with respect to the dataset, so this function will reconstruct the spaCy's output to match the dataset one. I made use of the whitespace flag in order to group the tokens which were together in the dataset.  
-If comp is set it uses convert_spacy with the parent setting, therefore this function checks whether the token has a ```compound``` dependence or not.
+If comp is set it uses convert_spacy with the parent setting, therefore this function checks whether the token has a ```compound``` dependence or not.  
+Moreover, after some though, it occured to me that it may be possible to have even the parent with dependency ```compound```, so I decided to add a parameter ```ancestors```, if set the function will use as parent the first ancestor with a dependency different from ```compound```.
 
 * reconstruct_output(doc, comp=False):
-  * Input: Doc object from spaCy and comp (compound) flag to set on the third exercise
+  * Input: 
+    * Doc object from spaCy 
+    * comp (compound) flag to set on the third exercise
+    * ancestors: flag to use to reach the first ancestor with dependency different from "compound"
   * Output: list of sentences, each sentence contains the token "reconstructed" as in the dataset
   * Implementation: 
     * given a token it uses whitespace to check if the token is part of a word in the dataset, if yes it concatenates the tokens with the same tag, otherwise the single token is used.  
-    * if comp is set to True, the tokens with compound dependency will have the same tag as their parents (see convert_spacy for more information).
+    * if comp is set to True, the tokens with compound dependency will have the same tag as their parents, moreover if also ancestors is set, the parent passed to convert_spacy will be the first with a dependency different from "compound"
 
 ```python
-def reconstruct_output(doc, comp=False):
+def reconstruct_output(doc, comp=False, ancestors=False):
   output = []
   current_token = ""
   current_tag = ""
@@ -119,7 +123,10 @@ def reconstruct_output(doc, comp=False):
     if(first):
         current_tag = convert_spacy(token)
         if((comp) and (token.dep_ == "compound")):
-          current_tag = convert_spacy(token, token.head)
+          parent = token.head
+          while((parent.dep_ == "compound") and (ancestors)):
+            parent = parent.head
+          current_tag = convert_spacy(token, parent)
         first = False
     if(not token.whitespace_):
       current_token += token.text
@@ -131,22 +138,23 @@ def reconstruct_output(doc, comp=False):
       current_tag = ""
   if(not first):
     output.append((current_token, current_tag))
+  
   return output
 ```
 ---
 The following function just processes the dataset and returns the predicted named entities.
 
 * process_dataset(dataset_text, expand):
-  * Input: the dataset as lists of sentences, expand is a flag used in the third exercise
+  * Input: the dataset as lists of sentences, expand is a flag used in the third exercise as well as the ancestors flag
   * Output: the predicted named entities
   * Implementation: it processes each sentence using nlp and it calls ```reconstruct_output``` to format it as in the dataset 
   
 ```python
-def process_dataset(dataset_text, expand):
+def process_dataset(dataset_text, expand, ancestors):
   pred = []
   for sentence in dataset_text:
     spacy_output = nlp(sentence[0])
-    pred.append(reconstruct_output(spacy_output, expand))
+    pred.append(reconstruct_output(spacy_output, expand, ancestors))
   return pred
 ```
 ---
@@ -157,14 +165,15 @@ This function processes the dataset using ```process_dataset```, then it extract
     * dataset_text: the dataset as lists of sentences (text)
     * dataset_refs: the true named entities from the dataset
     * expand: whether to use the expanded version (ex3) or not
+    * ancestors: whether to retrace the tree to find the first parent with dependency different from compound
   * Output:
     * the scikit classification report of spaCy NER on the specified dataset (using the setting on convert_type function)
     * the predictions
   * Implementation: process the dataset and compute the report
   
 ```python
-def get_accuracy(dataset_text, dataset_refs, expand = False):
-  pred = process_dataset(dataset_text, expand)
+def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = False):
+  pred = process_dataset(dataset_text, expand, ancestors)
   predicted = []
   for sentence in pred:
     for token in sentence:
@@ -343,3 +352,35 @@ weighted avg       0.88      0.80      0.84     46666
 |total|	0.370	|0.518	|0.431|	5648|
 
 As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance I tried to replace the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). Another experiment maybe to choose this tag in a smarter way.
+
+---
+In order to try to improve the previous results I decided to try to retrace the parent tree until an ancestor with dependence different from ```compound``` is found, then this ancestor will be used to set the tags to the token with ```compound``` dependency.  
+These are the new results:
+### Token level accuracy
+```
+precision    recall  f1-score   support
+
+       B-LOC       0.77      0.66      0.71      1668
+      B-MISC       0.10      0.56      0.17       702
+       B-ORG       0.51      0.30      0.37      1661
+       B-PER       0.77      0.63      0.69      1617
+       I-LOC       0.46      0.52      0.49       257
+      I-MISC       0.05      0.40      0.09       216
+       I-ORG       0.40      0.51      0.45       835
+       I-PER       0.67      0.79      0.72      1156
+           O       0.95      0.85      0.90     38554
+
+    accuracy                           0.80     46666
+   macro avg       0.52      0.58      0.51     46666
+weighted avg       0.88      0.80      0.83     46666
+```
+### Chunk level accuracy
+|     | p	   |  r	    |   f	  | s |
+| -- | -- | -- | -- | -- |
+|ORG	| 0.436|	0.263	|0.328	|1661|
+|LOC	| 0.742|	0.653	|0.695	|1668|
+|MISC	| 0.098|	0.550	|0.167	|702|
+|PER	| 0.667|	0.606	|0.635	|1617|
+|total| 0.368|	0.512	|0.428	|5648|
+
+Even in this case the results decreased.
