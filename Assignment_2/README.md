@@ -205,10 +205,10 @@ def get_accuracy(dataset_text, dataset_refs, expand = False):
   
   |     |  p	 |    r|	    f|	 s  |
   | -- | -- | -- | -- | -- |
-  |LOC	|0.755 |0.667|	0.708|	1668|
-  |ORG	|0.464 |0.276|	0.346|	1661|
-  |PER	|0.774 |0.609|	0.681|	1617|
   |MISC	|0.100 |0.554|	0.169|	702|
+  |PER	|0.774 |0.609|	0.681|	1617|
+  |LOC	|0.755 |0.667|	0.708|	1668|
+  |ORG	|0.464 |0.276|	0.346|	1661|  
   |total|	0.385|0.521|	0.443|	5648|
   
   ### Experiment
@@ -237,10 +237,10 @@ def get_accuracy(dataset_text, dataset_refs, expand = False):
   
   |    | p	|  r	|  f	|  s |
   | -- | -- | -- | -- | -- |
+  |MISC|	0.105|	0.550|	0.177|	702|
+  |PER |	0.761|	0.590|	0.665|	1617|
   |LOC |	0.766|	0.695|	0.729|	1668|
   |ORG |	0.448|	0.272|	0.339|	1661|
-  |PER |	0.761|	0.590|	0.665|	1617|
-  |MISC|	0.105|	0.550|	0.177|	702|
   |total|	0.397|	0.523|	0.451|	5648|
 
 ***
@@ -336,10 +336,10 @@ weighted avg       0.88      0.80      0.84     46666
 
 |     |p	  | r	    |f	    |s   |
 | -- | -- | -- | -- | -- |
+|MISC	|0.098	|0.553	|0.167|	702|
+|PER	|0.669	|0.607	|0.637| 1617|
 |LOC	|0.739	|0.662	|0.699|	1668|
 |ORG	|0.445	|0.273	|0.338|	1661|
-|PER	|0.669	|0.607	|0.637| 1617|
-|MISC	|0.098	|0.553	|0.167|	702|
 |total|	0.370	|0.518	|0.431|	5648|
 
 As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance I tried to replace the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). Another experiment maybe to choose this tag in a smarter way.
