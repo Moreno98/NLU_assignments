@@ -342,4 +342,4 @@ weighted avg       0.88      0.80      0.84     46666
 |MISC	|0.098	|0.553	|0.167|	702|
 |total|	0.370	|0.518	|0.431|	5648|
 
-As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance a different method to choose the ```IOB``` of the token. In this sense I tried to change the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). 
+As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance I tried to replace the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). Another experiment maybe to choose this tag in a smarter way.
