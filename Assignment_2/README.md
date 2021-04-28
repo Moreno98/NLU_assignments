@@ -242,5 +242,104 @@ def get_accuracy(dataset_text, dataset_refs, expand = False):
   |PER |	0.761|	0.590|	0.665|	1617|
   |MISC|	0.105|	0.550|	0.177|	702|
   |total|	0.397|	0.523|	0.451|	5648|
-    
+
+***
 ## 2) Grouping of Entities
+In order to group the named entities based on the chunks I iterate the dataset over the sentences and for each of them I group the entities inside the same chunk.  
+The following function groups the entities of a given sentence. I make use of ```noun_chunk``` to know the chunks inside the sentence and the ```chunk.ents``` to find which entities are inside the chunks. I checked whether all the entities of the sentence (```doc.ents```) are inside ```chunk.ents```, so this method can be used. Moreover I found that there might be new entities inside ```chunk.ents``` (w.r.t. ```doc.ents```), they will be discarded, so just the main entities from the sentence (```doc.ents```) will be considered.
+
+* group_eintities(sentence):
+  * Input: the sentence to process
+  * Output: named entities grouped based on noun_chunk
+  * Implementation:
+    * first a set containing all the sentence entities is created
+    * for each noun_chunk its entities are checked if they belong to the main entity set, if yes they will be part of the chunk group
+    * the entities added are removed from the main set
+    * in the end if the set is not empty, each remaining entity is added to a different new chunk (entities that were not in any chunk)
+
+```python
+def group_entities(sentence):
+  doc = nlp(sentence)
+  groups = []
+  entities = set()
+
+  for ent in doc.ents:
+    entities.add(ent)
+
+  for chunk in doc.noun_chunks:
+    group = []
+    for span in chunk.ents:
+      if span in entities:
+        group.append(span.root.ent_type_)
+        entities.remove(span)
+    if(len(group) != 0):
+      groups.append(group)
+
+  for ent in entities:
+    groups.append([ent.root.ent_type_])
+
+  return groups
+```
+---
+
+This function computes the frequencies of a given dataset, it uses ```group_entities``` to group the entities of each sentence, then each group is converted in tuple in order to be used as key in the ```freq``` dictionary; this dictionary is used to count the frequency of each combination.
+
+> Note: I take in account the order of the entities, because, in my opinion, different ordering could have different meaning in the main sentence so in that case they have to be considered different.
+
+* get_frequencies(dataset):
+  * Input: the dataset where counting the combinations of entities
+  * Output: a dict containing the frequencies for each combination
+  * Implementation:
+    * process each sentence of the dataset and groups its entities using group_entities
+    * for each group create a tuple and increase the count of that group (combination) on the dict
+```python
+def get_frequencies(dataset):
+  freq = dict()
+  for sentence in dataset:
+    groups = group_entities(sentence[0])
+    for group in groups:
+      group = tuple(group)
+      if(group in freq):
+        freq[group] += 1
+      else:
+        freq[group] = 1
+  return freq
+```
+---
+### Execution
+I simply run ```get_frequencies``` on the test set and print the dictionary of the frequencies.
+***
+## 3) One of the possible post-processing steps is to fix segmentation errors.  
+**Write a function that extends the entity span to cover the full noun-compounds. Make use of compound dependency relation.**
+
+For this part I reuse the ```get_accuracy``` function but, this time, with the ```expand``` flag set to True. In this setting the tokens with ```compound``` dependency will receive the same tag of their parents (please refer to the ```convert_spacy``` function for further details).  
+These are the results:
+### Token level accuracy
+```
+precision    recall  f1-score   support
+
+       B-LOC       0.77      0.67      0.72      1668
+      B-MISC       0.10      0.57      0.17       702
+       B-ORG       0.51      0.30      0.38      1661
+       B-PER       0.79      0.63      0.70      1617
+       I-LOC       0.48      0.53      0.50       257
+      I-MISC       0.05      0.41      0.09       216
+       I-ORG       0.40      0.52      0.45       835
+       I-PER       0.71      0.79      0.75      1156
+           O       0.95      0.85      0.90     38554
+
+    accuracy                           0.80     46666
+   macro avg       0.53      0.59      0.52     46666
+weighted avg       0.88      0.80      0.84     46666
+```
+### Chunk level accuracy
+
+|     |p	  | r	    |f	    |s   |
+| -- | -- | -- | -- | -- |
+|LOC	|0.739	|0.662	|0.699|	1668|
+|ORG	|0.445	|0.273	|0.338|	1661|
+|PER	|0.669	|0.607	|0.637| 1617|
+|MISC	|0.098	|0.553	|0.167|	702|
+|total|	0.370	|0.518	|0.431|	5648|
+
+As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance a different method to choose the ```IOB``` of the token. In this sense I tried to change the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). 
