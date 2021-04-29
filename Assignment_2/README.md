@@ -112,7 +112,7 @@ If comp is set it uses convert_spacy with the parent setting, therefore this fun
 Moreover, after some though, it occured to me that it may be possible to have multiple parents with dependency ```compound```, so I updated the function to check all the ancestors.  
 As final experiment, for curiosity, I tried to use just the direct parent of the node and not the whole ancestors, so I added the parameter ancestors for this purpose.
 
-* reconstruct_output(doc, comp=False):
+* reconstruct_output(doc, comp=False, ancestors = True):
   * Input: 
     * Doc object from spaCy 
     * comp (compound) flag to set on the third exercise
@@ -156,7 +156,7 @@ def reconstruct_output(doc, comp=False, ancestors = True):
 ---
 The following function just processes the dataset and returns the predicted named entities.
 
-* process_dataset(dataset_text, expand):
+* process_dataset(dataset_text, expand, ancestors):
   * Input: the dataset as lists of sentences, expand is a flag used in the third exercise to expand the named entities as well as the ancestors
   * Output: the predicted named entities
   * Implementation: it processes each sentence using nlp and it calls reconstruct_output to format it as in the dataset 
@@ -172,7 +172,7 @@ def process_dataset(dataset_text, expand, ancestors):
 ---
 This function processes the dataset using ```process_dataset```, then it extracts the predictions and true_labels to compute the classification report from ```scikit-learn```.
 
-* get_accuracy(dataset_text, dataset_refs, expand = False):
+* get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = True):
   * Input: 
     * dataset_text: the dataset as lists of sentences (text)
     * dataset_refs: the true named entities from the dataset
