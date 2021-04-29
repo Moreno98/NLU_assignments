@@ -36,12 +36,14 @@ The format which is best suited for conversion is the spaCy format since it is m
 for example spaCy has two different classes for representing locations: GPE (geopolitical entities) and LOC, both can be converted in the dataset class LOC. The other way around 
 is not possible as we do not know which spaCy class (GPE or LOC) the dataset class (LOC) refers to.   
 I decided the following map for the conversion:
-  * ```ORG``` to ```ORG```
+  * ```ORG``` and ```WORK_OF_ART``` to ```ORG```
   * ```GPE``` and ```LOC``` to ```LOC```
-  * ```PERSON``` to ```PER```
-  * all the others to ```MISC``` (miscellaneous)  
+  * ```PERSON``` and ```FAC``` to ```PER```
+  * ```LANGUAGE```, ```NORP```, ```EVENT```, ```LAW```, ```PRODUCT```, ```MONEY``` all the others to ```MISC``` (miscellaneous)  
+  * the remaining will not have a tag
 
-> Note: The accuracy on the dataset is highly dependent on the previous decision
+> Note1: The accuracy on the dataset is highly dependent on the previous decisions
+> Note2: Initially I divided the tags in a different way, then, after some testing, I noticed that the MISC accuracy had very low performance with respect to the other tags, so I started digging about why. I found that some tags, which previously I was converting as MISC, were strongly decreasing the accuracy, so I removed them. As final experiment I tried various combination of the tags and finally I ended up with the current configuration which, obviosuly, may not be the best.
 
 The following function takes in input the named entity type from spaCy and it returns its conversion. 
 
@@ -52,69 +54,75 @@ The following function takes in input the named entity type from spaCy and it re
 
 ```python
 def convert_type(ent_type):
-  if(ent_type in ["ORG"]):
+  if(ent_type in ["ORG", "WORK_OF_ART"]):
     return "ORG" 
   if(ent_type in ["GPE", "LOC"]):
     return "LOC"
-  if(ent_type in ["LANGUAGE", "WORK_OF_ART", "FAC", "ORDINAL", "TIME", "NORP", "EVENT", "LAW", "CARDINAL", "PRODUCT", "DATE", "QUANTITY", "MONEY", "PERCENT"]):
+  if(ent_type in ["LANGUAGE", "NORP", "EVENT", "LAW", "PRODUCT", "MONEY"]):
     return "MISC"
-  if(ent_type in ["PERSON"]):
+  if(ent_type in ["PERSON", "FAC"]):
     return "PER"
   return ""
 ```
 ---
 Another difference from the dataset format is that spaCy separates the ```IOB``` tags from the named entity tags, so I created a function which concatenates these tags to get 
 the same format as the dataset (for instance ```I-ORG``` with ```I``` as ```IOB``` and ```ORG``` as named entity).  
-Moreover this function has been adapted for the third point of the assignment. When the parent node is not set, the function behaves as previously indicated, instead when it is set, 
-the parent is the parent of a ```compound``` dependency token, in this case the token will receive the same type as the parent to try to fix the segmentation error (as asked in the last point).
+Moreover this function has been updated for the third point of the assignment. When the parent node is not set, the function behaves as previously indicated, instead when it is set, the parent parameter is the parent of a ```compound``` dependency token, in this case the token will receive the same type as the parent to try to fix the segmentation error (as asked in the last point). Here the ```IOB``` tag is important, infact we need to know the position of the tag to undestand which iob tag has to be assigned to the token. The idea here is to find out if other parents have the ```B``` tag, if yes then the token will have the ```I``` tag, otherwise I assume that the token iteself is at the beginning of the span, so the ```B``` tag is assigned. This is implemented using the ```parent_iob``` paremeter which will contain the B tag if one of the ancestors was at the beggining of the span, otherwise it will contain an I or O tag.  
+If the parent does not have a named entity tag the token will receive its representation if it exists otherwise "O".
 
-> Note: When parent is set, if the token has an IOB ```O``` I decided to use the named entity tag from the parent along side to a ```I``` IOB tag (I assumed that the child token is 
-Inside the span, which is not always the case).  
-If the parent does not have a named entity tag then just the ```O``` tag is returned.
+> Note: if the convert_type function returns "", then the predicted tag will be just "O".
 
-* convert_spacy(token, parent=None):
-  * Input: the token to convert, the parent of the token to use in the third exercise
+* convert_spacy(token, parent=None, parent_iob=None):
+  * Input: 
+    * Token: the token to convert
+    * Parent: the parent of the token to use to group the named entity
+    * Parent_iob: this tag is used to know if there is a parent in the tree which already has the B tag, if yes the I tag will be assigned to the token, B otherwise.
   * Output: the tags converted in form ```iob-type``` as in the dataset
   * Implementation: 
     * if parent is None it returns just the concatenation between the ```IOB``` tag and the named entity tag
     * if parent is set it returns the named entity from the parent if possible
 
 ```python
-def convert_spacy(token, parent=None):
+def convert_spacy(token, parent=None, parent_iob=None): # parent_iob maybe different from the current parent.ent_iob_
   if(parent == None): # exercise 1 usage
-    if(token.ent_iob_ == "O"):
+    if(convert_type(token.ent_type_) == ""):
       return "O"
     else:
       return f"{token.ent_iob_}-{convert_type(token.ent_type_)}"
   else: # exercise 3 usage
-    if(token.ent_iob_ == "O"):
-      if(parent.ent_type_ != ""):
-        return f"I-{convert_type(parent.ent_type_)}"
-      else:
+    iob = "I"
+    if(parent_iob == "I"):
+      iob = "B"
+    if(parent.ent_type_ != ""):
+      if(convert_type(parent.ent_type_) == ""):
         return "O"
+      return f"{iob}-{convert_type(parent.ent_type_)}"
     else:
-      if(parent.ent_type_ != ""):
-        return f"{token.ent_iob_}-{convert_type(parent.ent_type_)}"
+      if(token.ent_iob_ == "O"):
+        return "O"
       else:
+        if(convert_type(token.ent_type_) == ""):
+          return "O"
         return f"{token.ent_iob_}-{convert_type(token.ent_type_)}"
 ```
 ---
 SpaCy tokenizes the text in a different way with respect to the dataset, so this function will reconstruct the spaCy's output to match the dataset one. I made use of the whitespace flag in order to group the tokens which were together in the dataset.  
-If comp is set it uses convert_spacy with the parent setting, therefore this function checks whether the token has a ```compound``` dependence or not.  
-Moreover, after some though, it occured to me that it may be possible to have even the parent with dependency ```compound```, so I decided to add a parameter ```ancestors```, if set the function will use as parent the first ancestor with a dependency different from ```compound```.
+If comp is set it uses convert_spacy with the parent setting, therefore this function checks whether the token has a ```compound``` dependency or not.  
+Moreover, after some though, it occured to me that it may be possible to have multiple parents with dependency ```compound```, so I updated the function to check all the ancestors.  
+As final experiment, for curiosity, I tried to use just the direct parent of the node and not the whole ancestors, so I added the parameter ancestors for this purpose.
 
 * reconstruct_output(doc, comp=False):
   * Input: 
     * Doc object from spaCy 
     * comp (compound) flag to set on the third exercise
-    * ancestors: flag to use to reach the first ancestor with dependency different from "compound"
+    * ancestors: this parameter is used in the final experiment of the third point, where I try just the direct parent of the token and not the entire tree
   * Output: list of sentences, each sentence contains the token "reconstructed" as in the dataset
   * Implementation: 
     * given a token it uses whitespace to check if the token is part of a word in the dataset, if yes it concatenates the tokens with the same tag, otherwise the single token is used.  
-    * if comp is set to True, the tokens with compound dependency will have the same tag as their parents, moreover if also ancestors is set, the parent passed to convert_spacy will be the first ancestor with a dependency different from "compound"
+    * if comp is set to True, the tokens with compound dependency will have the same tag as the first parent with a dependency different from "compound" (if possible) 
 
 ```python
-def reconstruct_output(doc, comp=False, ancestors=False):
+def reconstruct_output(doc, comp=False, ancestors = True):
   output = []
   current_token = ""
   current_tag = ""
@@ -124,9 +132,12 @@ def reconstruct_output(doc, comp=False, ancestors=False):
         current_tag = convert_spacy(token)
         if((comp) and (token.dep_ == "compound")):
           parent = token.head
+          parent_iob = token.head.ent_iob_
           while((parent.dep_ == "compound") and (ancestors)):
+            if(parent_iob != "B"):
+              parent_iob = parent.head.ent_iob_
             parent = parent.head
-          current_tag = convert_spacy(token, parent)
+          current_tag = convert_spacy(token, parent, parent_iob)
         first = False
     if(not token.whitespace_):
       current_token += token.text
@@ -145,9 +156,9 @@ def reconstruct_output(doc, comp=False, ancestors=False):
 The following function just processes the dataset and returns the predicted named entities.
 
 * process_dataset(dataset_text, expand):
-  * Input: the dataset as lists of sentences, expand is a flag used in the third exercise as well as the ancestors flag
+  * Input: the dataset as lists of sentences, expand is a flag used in the third exercise to expand the named entities as well as the ancestors
   * Output: the predicted named entities
-  * Implementation: it processes each sentence using nlp and it calls ```reconstruct_output``` to format it as in the dataset 
+  * Implementation: it processes each sentence using nlp and it calls reconstruct_output to format it as in the dataset 
   
 ```python
 def process_dataset(dataset_text, expand, ancestors):
@@ -165,16 +176,17 @@ This function processes the dataset using ```process_dataset```, then it extract
     * dataset_text: the dataset as lists of sentences (text)
     * dataset_refs: the true named entities from the dataset
     * expand: whether to use the expanded version (ex3) or not
-    * ancestors: whether to retrace the tree to find the first parent with dependency different from compound
+    * ancestors: usually True, just used in the final experiment (ex3)
   * Output:
     * the scikit classification report of spaCy NER on the specified dataset (using the setting on convert_type function)
     * the predictions
   * Implementation: process the dataset and compute the report
   
 ```python
-def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = False):
+def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = True):
   pred = process_dataset(dataset_text, expand, ancestors)
   predicted = []
+
   for sentence in pred:
     for token in sentence:
       predicted.append(token[1])
@@ -194,63 +206,63 @@ def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = False):
   
   #### 1.1) Token level evaluation:
   ```
-       precision    recall  f1-score   support
+         precision    recall  f1-score   support
 
          B-LOC       0.77      0.68      0.72      1668
-        B-MISC       0.10      0.57      0.17       702
-         B-ORG       0.52      0.31      0.38      1661
-         B-PER       0.80      0.63      0.70      1617
+        B-MISC       0.58      0.55      0.57       702
+         B-ORG       0.51      0.31      0.38      1661
+         B-PER       0.79      0.63      0.70      1617
          I-LOC       0.57      0.53      0.55       257
-        I-MISC       0.05      0.40      0.09       216
-         I-ORG       0.42      0.51      0.46       835
-         I-PER       0.84      0.79      0.81      1156
-             O       0.95      0.86      0.90     38554
+        I-MISC       0.26      0.36      0.30       216
+         I-ORG       0.41      0.52      0.46       835
+         I-PER       0.82      0.79      0.80      1156
+             O       0.95      0.97      0.96     38554
 
-      accuracy                           0.81     46666
-     macro avg       0.56      0.59      0.53     46666
-  weighted avg       0.89      0.81      0.84     46666
+      accuracy                           0.90     46666
+     macro avg       0.63      0.59      0.61     46666
+  weighted avg       0.90      0.90      0.90     46666
   ```
   #### 1.2) Chunk level evaluation:
   
-  |     |  p	 |    r|	    f|	 s  |
+  |     |   p	  |   r	  |  f	|    s|
   | -- | -- | -- | -- | -- |
-  |MISC	|0.100 |0.554|	0.169|	702|
-  |PER	|0.774 |0.609|	0.681|	1617|
-  |LOC	|0.755 |0.667|	0.708|	1668|
-  |ORG	|0.464 |0.276|	0.346|	1661|  
-  |total|	0.385|0.521|	0.443|	5648|
+  |PER	|0.760	|0.610	|0.677|	1617|
+  |ORG	|0.460	|0.277	|0.346|	1661|
+  |LOC	|0.755	|0.667	|0.708|	1668|
+  |MISC	|0.576	|0.546	|0.560|	702|
+  |total|	0.663	|0.521	|0.583|	5648|
   
   ### Experiment
   I was curious about using already tokenized text from the dataset (overriding spaCy tokenizer).  
-  Despite spaCy's documentation reports that the performance should decrease (due to the fact that the tokenization methods may be different) the perfomance remains similar.  
+  SpaCy's documentation reports that the performance should decrease (due to the fact that the tokenization methods may be different), in this case the perfomance slightly decreases, so spaCy's documentation is right.
   Here the results:
   #### Token level evaluation:
   ```
-    precision    recall  f1-score   support
+      precision    recall  f1-score   support
 
          B-LOC       0.78      0.70      0.74      1668
-        B-MISC       0.11      0.56      0.18       702
+        B-MISC       0.58      0.55      0.56       702
          B-ORG       0.50      0.30      0.38      1661
-         B-PER       0.79      0.61      0.69      1617
+         B-PER       0.77      0.61      0.68      1617
          I-LOC       0.60      0.62      0.61       257
-        I-MISC       0.05      0.40      0.09       216
-         I-ORG       0.42      0.52      0.46       835
-         I-PER       0.82      0.76      0.78      1156
-             O       0.94      0.86      0.90     38554
+        I-MISC       0.27      0.37      0.31       216
+         I-ORG       0.41      0.52      0.46       835
+         I-PER       0.80      0.76      0.78      1156
+             O       0.95      0.97      0.96     38554
 
-      accuracy                           0.81     46666
-     macro avg       0.56      0.59      0.54     46666
-  weighted avg       0.89      0.81      0.84     46666
+      accuracy                           0.90     46666
+     macro avg       0.63      0.60      0.61     46666
+  weighted avg       0.90      0.90      0.90     46666
   ```
   #### Chunk level evaluation:
   
-  |    | p	|  r	|  f	|  s |
+  |     |   p	  | r	  | f	    |  s|
   | -- | -- | -- | -- | -- |
-  |MISC|	0.105|	0.550|	0.177|	702|
-  |PER |	0.761|	0.590|	0.665|	1617|
-  |LOC |	0.766|	0.695|	0.729|	1668|
-  |ORG |	0.448|	0.272|	0.339|	1661|
-  |total|	0.397|	0.523|	0.451|	5648|
+  |PER	|0.748	|0.592|	0.661	|1617|
+  |ORG	|0.444	|0.273|	0.338	|1661|
+  |LOC	|0.766	|0.695|	0.729	|1668|
+  |MISC	|0.571	|0.541|	0.556	|702|
+  |total|	0.659	|0.522|	0.583	|5648|
 
 ***
 ## 2) Grouping of Entities
@@ -316,72 +328,72 @@ def get_frequencies(dataset):
 ```
 ---
 ### Execution
-I simply run ```get_frequencies``` on the test set and print the dictionary of the frequencies.
+I simply run ```get_frequencies``` on the test set and print, ordered, the dictionary of the frequencies.
 ***
 ## 3) One of the possible post-processing steps is to fix segmentation errors.  
 **Write a function that extends the entity span to cover the full noun-compounds. Make use of compound dependency relation.**
 
-For this part I reuse the ```get_accuracy``` function but, this time, with the ```expand``` flag set to True. In this setting the tokens with ```compound``` dependency will receive the same tag of their parents (please refer to the ```convert_spacy``` function for further details).  
+For this part I reused the ```get_accuracy``` function but, this time, with the ```expand``` flag set to True. In this setting the tokens with ```compound``` dependency will receive the same tag of their parents.  
+Initially I just took the first parent of the token, but after some thoughts it occured to me that multiple ancestors on the tree may have the ```compound``` dependency, so I updated the function to retrace the tree to take in account also the ancestors as I explained previously on the ```convert_spacy``` explanation.
+
 These are the results:
 ### Token level accuracy
 ```
 precision    recall  f1-score   support
 
        B-LOC       0.77      0.67      0.72      1668
-      B-MISC       0.10      0.57      0.17       702
-       B-ORG       0.51      0.30      0.38      1661
-       B-PER       0.79      0.63      0.70      1617
-       I-LOC       0.48      0.53      0.50       257
-      I-MISC       0.05      0.41      0.09       216
-       I-ORG       0.40      0.52      0.45       835
-       I-PER       0.71      0.79      0.75      1156
-           O       0.95      0.85      0.90     38554
+      B-MISC       0.57      0.57      0.57       702
+       B-ORG       0.43      0.34      0.38      1661
+       B-PER       0.62      0.64      0.63      1617
+       I-LOC       0.46      0.49      0.48       257
+      I-MISC       0.29      0.35      0.32       216
+       I-ORG       0.42      0.39      0.40       835
+       I-PER       0.81      0.74      0.77      1156
+           O       0.95      0.97      0.96     38554
 
-    accuracy                           0.80     46666
-   macro avg       0.53      0.59      0.52     46666
-weighted avg       0.88      0.80      0.84     46666
+    accuracy                           0.89     46666
+   macro avg       0.59      0.57      0.58     46666
+weighted avg       0.89      0.89      0.89     46666
 ```
 ### Chunk level accuracy
 
-|     |p	  | r	    |f	    |s   |
+|     |  p	  |  r	  |  f	  | s  |
 | -- | -- | -- | -- | -- |
-|MISC	|0.098	|0.553	|0.167|	702|
-|PER	|0.669	|0.607	|0.637| 1617|
-|LOC	|0.739	|0.662	|0.699|	1668|
-|ORG	|0.445	|0.273	|0.338|	1661|
-|total|	0.370	|0.518	|0.431|	5648|
+|PER	|0.549	|0.581	|0.565	|1617|
+|ORG	|0.332	|0.265	|0.295	|1661|
+|LOC	|0.733	|0.659	|0.694	|1668|
+|MISC	|0.554	|0.560	|0.557	|702|
+|total|	0.548	|0.509	|0.527	|5648|
 
-As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance I tried to replace the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). Another experiment maybe to choose this tag in a smarter way.
-
----
-In order to try to improve the previous results I decided to also retrace the parent tree until an ancestor with dependency different from ```compound``` is found, then this ancestor will be used to set the tags to the token with ```compound``` dependency.  
-These are the new results:
+As we can see, using this method, the performance slightly decreases.
+***
+As final experiment, for curiosity, I tried not to retrace the tree (as I initially thought) in order to end on the direct parent of the token, this method seems better then the previous one with these results:
 ### Token level accuracy
 ```
 precision    recall  f1-score   support
 
-       B-LOC       0.77      0.66      0.71      1668
-      B-MISC       0.10      0.56      0.17       702
-       B-ORG       0.51      0.30      0.37      1661
-       B-PER       0.77      0.63      0.69      1617
-       I-LOC       0.46      0.52      0.49       257
-      I-MISC       0.05      0.40      0.09       216
-       I-ORG       0.40      0.51      0.45       835
-       I-PER       0.67      0.79      0.72      1156
-           O       0.95      0.85      0.90     38554
+       B-LOC       0.77      0.68      0.72      1668
+      B-MISC       0.57      0.58      0.57       702
+       B-ORG       0.43      0.34      0.38      1661
+       B-PER       0.66      0.64      0.65      1617
+       I-LOC       0.48      0.50      0.49       257
+      I-MISC       0.29      0.34      0.31       216
+       I-ORG       0.44      0.39      0.42       835
+       I-PER       0.81      0.74      0.78      1156
+           O       0.95      0.97      0.96     38554
 
-    accuracy                           0.80     46666
-   macro avg       0.52      0.58      0.51     46666
-weighted avg       0.88      0.80      0.83     46666
+    accuracy                           0.90     46666
+   macro avg       0.60      0.58      0.59     46666
+weighted avg       0.89      0.90      0.89     46666
 ```
-### Chunk level accuracy
-|     | p	   |  r	    |   f	  | s |
-| -- | -- | -- | -- | -- |
-|ORG	| 0.436|	0.263	|0.328	|1661|
-|LOC	| 0.742|	0.653	|0.695	|1668|
-|MISC	| 0.098|	0.550	|0.167	|702|
-|PER	| 0.667|	0.606	|0.635	|1617|
-|total| 0.368|	0.512	|0.428	|5648|
 
-This method further reduced the performance. One explanation for the decrease could be the fact that moving away from the token can lead to a decrease in the accuracy of the tag chosen for that particular token, this would means that the ```compound``` dependency is not that useful away from the token.  
-Other techniques may be useful to choose a better tag for the token.  
+### Chunk level accuracy
+|     |  p	  |  r	  |  f	  |  s |
+| -- | -- | -- | -- | -- |
+|PER	|0.587	|0.583	|0.585	|1617|
+|ORG	|0.330	|0.272	|0.298	|1661|
+|LOC	|0.732	|0.668	|0.699	|1668|
+|MISC	|0.552	|0.570	|0.561	|702|
+|total|	0.557	|0.515	|0.535	|5648|
+
+As we can see the perfomance are similar with a slightly increase at chunk level, however this method does not have much sense since the ```IOB``` tag and named entity tag will be chosen without considering the whole span. 
