@@ -43,6 +43,7 @@ I decided the following map for the conversion:
   * the remaining will not have a tag
 
 > Note1: The accuracy on the dataset is highly dependent on the previous decisions
+
 > Note2: Initially I divided the tags in a different way, then, after some testing, I noticed that the MISC accuracy had very low performance with respect to the other tags, so I started digging about why. I found that some tags, which previously I was converting as MISC, were strongly decreasing the accuracy, so I removed them. As final experiment I tried various combination of the tags and finally I ended up with the current configuration which, obviosuly, may not be the best.
 
 The following function takes in input the named entity type from spaCy and it returns its conversion. 
