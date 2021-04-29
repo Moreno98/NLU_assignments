@@ -39,7 +39,7 @@ I decided the following map for the conversion:
   * ```ORG``` and ```WORK_OF_ART``` to ```ORG```
   * ```GPE``` and ```LOC``` to ```LOC```
   * ```PERSON``` and ```FAC``` to ```PER```
-  * ```LANGUAGE```, ```NORP```, ```EVENT```, ```LAW```, ```PRODUCT```, ```MONEY``` all the others to ```MISC``` (miscellaneous)  
+  * ```LANGUAGE```, ```NORP```, ```EVENT```, ```LAW```, ```PRODUCT```, ```MONEY``` to ```MISC``` (miscellaneous)  
   * the remaining will not have a tag
 
 > Note1: The accuracy on the dataset is highly dependent on the previous decisions
