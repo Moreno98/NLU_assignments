@@ -111,7 +111,7 @@ Moreover, after some though, it occured to me that it may be possible to have ev
   * Output: list of sentences, each sentence contains the token "reconstructed" as in the dataset
   * Implementation: 
     * given a token it uses whitespace to check if the token is part of a word in the dataset, if yes it concatenates the tokens with the same tag, otherwise the single token is used.  
-    * if comp is set to True, the tokens with compound dependency will have the same tag as their parents, moreover if also ancestors is set, the parent passed to convert_spacy will be the first with a dependency different from "compound"
+    * if comp is set to True, the tokens with compound dependency will have the same tag as their parents, moreover if also ancestors is set, the parent passed to convert_spacy will be the first ancestor with a dependency different from "compound"
 
 ```python
 def reconstruct_output(doc, comp=False, ancestors=False):
@@ -354,7 +354,7 @@ weighted avg       0.88      0.80      0.84     46666
 As we can see, using this method, the performance slightly decreases; to try to improve it a different setting on ```convert_spacy``` can be tried, for instance I tried to replace the ```IOB``` tag assigned if the token has ```O``` as IOB from ```I``` to ```B```, the perfomance remains the same with an increase on the ```B-*``` tags and a decrease on the ```I-*``` tags (obvously). Another experiment maybe to choose this tag in a smarter way.
 
 ---
-In order to try to improve the previous results I decided to try to retrace the parent tree until an ancestor with dependence different from ```compound``` is found, then this ancestor will be used to set the tags to the token with ```compound``` dependency.  
+In order to try to improve the previous results I decided to also retrace the parent tree until an ancestor with dependency different from ```compound``` is found, then this ancestor will be used to set the tags to the token with ```compound``` dependency.  
 These are the new results:
 ### Token level accuracy
 ```
@@ -383,4 +383,5 @@ weighted avg       0.88      0.80      0.83     46666
 |PER	| 0.667|	0.606	|0.635	|1617|
 |total| 0.368|	0.512	|0.428	|5648|
 
-Even in this case the results decreased.
+This method further reduced the performance. One explanation for the decrease could be the fact that moving away from the token can lead to a decrease in the accuracy of the tag chosen for that particular token, this would means that the ```compound``` dependency is not that useful away from the token.  
+Other techniques may be useful to choose a better tag for the token.  
