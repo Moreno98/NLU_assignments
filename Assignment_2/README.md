@@ -45,9 +45,9 @@ I decided the following map for the conversion:
   * ```LANGUAGE```, ```NORP```, ```EVENT```, ```LAW```, ```PRODUCT```, ```MONEY``` to ```MISC``` (miscellaneous)  
   * the remaining will not have a tag
 
-> Note1: The accuracy on the dataset is highly dependent on the previous decisions
+> Note 1: The accuracy on the dataset is highly dependent on the previous decisions
 
-> Note2: Initially I divided the tags in a different way, then, after some testing, I noticed that the MISC accuracy had very low performance with respect to the other tags, so I started digging about why. I found that some tags, which previously I was converting as MISC, were strongly decreasing the accuracy, so I removed them. As final experiment I tried various combination of the tags and finally I ended up with the current configuration which, obviosuly, may not be the best.
+> Note 2: Initially I divided the tags in a different way, then, after some testing, I noticed that the MISC accuracy had very low performance with respect to the other tags, so I started digging about why. I found that some tags, which previously I was converting as MISC, were strongly decreasing the accuracy, so I removed them. As final experiment I tried various combination of the tags and finally I ended up with the current configuration which, obviosuly, may not be the best.
 
 The following function takes in input the named entity type from spaCy and it returns its conversion. 
 
@@ -115,7 +115,7 @@ If comp is set it uses convert_spacy with the parent setting, therefore this fun
 Moreover, after some though, it occured to me that it may be possible to have multiple parents with dependency ```compound```, so I updated the function to check all the ancestors.  
 As final experiment, for curiosity, I tried to use just the direct parent of the node and not the whole ancestors, so I added the parameter ancestors for this purpose.
 
-> Note: To expand the named entity I took in account the fact that between the token and the head there could be another entity, I tested this and in test.txt it seems this is not the case, so I just check if the compound token has the same entity of the parent or an empty antity, if this is the case its tag is updated (this final update increases the performance of about 4%).
+> Note: To expand the named entity I took in account the fact that between the token and the head there could be another entity (overlapping of entities), I tested this and in test.txt it seems this is not the case, so I just check if the compound token has the same entity of the parent or an empty antity, if this is the case its tag is updated (this final update increases the performance of about 4%).
 
 * reconstruct_output(doc, comp=False, ancestors = True):
   * Input: 
@@ -343,7 +343,7 @@ I simply run ```get_frequencies``` on the test set and print, ordered, the dicti
 For this part I reused the ```get_accuracy``` function but, this time, with the ```expand``` flag set to True. In this setting the tokens with ```compound``` dependency will receive the same tag of their parents.  
 Initially I just took the first parent of the token, but after some thoughts it occured to me that multiple ancestors on the tree may have the ```compound``` dependency, so I updated the function to retrace the tree to take in account also the ancestors (the entire entity) as I explained previously on the ```convert_spacy``` explanation.
 
-> Note 1: To expand the named entity I took in account the fact that between the token and the head there could be another entity, I tested this and in test.txt it seems this is not the case, so I just check if the compound token has the same entity of the parent or an empty antity, if this is the case its tag is updated (this final update increases the performance of about 4%).  
+> Note 1: To expand the named entity I took in account the fact that between the token and the head there could be another entity (overlapping of entities), I tested this and in test.txt it seems this is not the case, so I just check if the compound token has the same entity of the parent or an empty antity, if this is the case its tag is updated (this final update increases the performance of about 4%).  
 
 > Note 2: the expansion of the entity can be chosen in a smarter way, for example if we have a situation like ["B-ORG", "O", "O"] with the third token compound of the first, in the current setting, the output would be ["B-ORG", "O", "I-ORG"] (if the second token is not a compound). This setting can be updated to expand also the second token to have ["B-ORG", "I-ORG", "I-ORG"] which may lead to better performance.
 
