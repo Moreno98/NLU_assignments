@@ -14,20 +14,23 @@ This function extracts the required information from the dataset: the sentences 
     * it reads the dataset using conll function
     * for each sentence it extracts the tokens as text or the tuple (token, name entity) 
 
+> Note: I removed the -DOCSTART- token from the dataset, however this token is not affect the predictions since it is always correctly classified.
+
 ```python
 def import_dataset(path):
-data = conll.read_corpus_conll(path)
-text_dataset = []
-dataset = []
-for t in data:
-  sentence = []
-  txt = ""
-  for t2 in t:
-    sentence.append((t2[0].split()[0], t2[0].split()[3]))
-    txt += str(t2[0].split()[0]) + " "
-  dataset.append(sentence)
-  text_dataset.append([txt])
-return text_dataset, dataset
+  data = conll.read_corpus_conll(path)
+  text_dataset = []
+  dataset = []
+  for t in data:
+    sentence = []
+    txt = ""
+    for t2 in t:
+      if(t2[0].split()[0] != "-DOCSTART-"):
+        sentence.append((t2[0].split()[0], t2[0].split()[3]))
+        txt += str(t2[0].split()[0]) + " "
+    dataset.append(sentence)
+    text_dataset.append([txt])
+  return text_dataset, dataset
 ```
 ---
 
@@ -112,6 +115,8 @@ If comp is set it uses convert_spacy with the parent setting, therefore this fun
 Moreover, after some though, it occured to me that it may be possible to have multiple parents with dependency ```compound```, so I updated the function to check all the ancestors.  
 As final experiment, for curiosity, I tried to use just the direct parent of the node and not the whole ancestors, so I added the parameter ancestors for this purpose.
 
+> Note: To expand the named entity I took in account the fact that between the token and the head there could be another entity, I tested this and in test.txt it seems this is not the case, so I just check if the compound token has the same entity of the parent or an empty antity, if this is the case its tag is updated (this final update increases the performance of about 4%).
+
 * reconstruct_output(doc, comp=False, ancestors = True):
   * Input: 
     * Doc object from spaCy 
@@ -138,7 +143,8 @@ def reconstruct_output(doc, comp=False, ancestors = True):
             if(parent_iob != "B"):
               parent_iob = parent.head.ent_iob_
             parent = parent.head
-          current_tag = convert_spacy(token, parent, parent_iob)
+          if(token.ent_type_ in ["", parent.ent_type_]): # change entity only if the token does not belong to another entity
+            current_tag = convert_spacy(token, parent, parent_iob)
         first = False
     if(not token.whitespace_):
       current_token += token.text
@@ -207,7 +213,7 @@ def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = True):
   
   #### 1.1) Token level evaluation:
   ```
-         precision    recall  f1-score   support
+                precision    recall  f1-score   support
 
          B-LOC       0.77      0.68      0.72      1668
         B-MISC       0.58      0.55      0.57       702
@@ -217,20 +223,20 @@ def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = True):
         I-MISC       0.26      0.36      0.30       216
          I-ORG       0.41      0.52      0.46       835
          I-PER       0.82      0.79      0.80      1156
-             O       0.95      0.97      0.96     38554
+             O       0.95      0.97      0.96     38323
 
-      accuracy                           0.90     46666
-     macro avg       0.63      0.59      0.61     46666
-  weighted avg       0.90      0.90      0.90     46666
+      accuracy                           0.90     46435
+     macro avg       0.63      0.59      0.61     46435
+  weighted avg       0.90      0.90      0.90     46435
   ```
   #### 1.2) Chunk level evaluation:
   
   |     |   p	  |   r	  |  f	|    s|
   | -- | -- | -- | -- | -- |
-  |PER	|0.760	|0.610	|0.677|	1617|
-  |ORG	|0.460	|0.277	|0.346|	1661|
-  |LOC	|0.755	|0.667	|0.708|	1668|
   |MISC	|0.576	|0.546	|0.560|	702|
+  |ORG	|0.460	|0.277	|0.346|	1661|
+  |PER	|0.760	|0.610	|0.677|	1617|
+  |LOC	|0.755	|0.667	|0.708|	1668|
   |total|	0.663	|0.521	|0.583|	5648|
   
   ### Experiment
@@ -239,7 +245,7 @@ def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = True):
   Here the results:
   #### Token level evaluation:
   ```
-      precision    recall  f1-score   support
+              precision    recall  f1-score   support
 
          B-LOC       0.78      0.70      0.74      1668
         B-MISC       0.58      0.55      0.56       702
@@ -249,20 +255,20 @@ def get_accuracy(dataset_text, dataset_refs, expand = False, ancestors = True):
         I-MISC       0.27      0.37      0.31       216
          I-ORG       0.41      0.52      0.46       835
          I-PER       0.80      0.76      0.78      1156
-             O       0.95      0.97      0.96     38554
+             O       0.95      0.97      0.96     38323
 
-      accuracy                           0.90     46666
-     macro avg       0.63      0.60      0.61     46666
-  weighted avg       0.90      0.90      0.90     46666
+      accuracy                           0.90     46435
+     macro avg       0.63      0.60      0.61     46435
+  weighted avg       0.90      0.90      0.90     46435
   ```
   #### Chunk level evaluation:
   
   |     |   p	  | r	  | f	    |  s|
   | -- | -- | -- | -- | -- |
-  |PER	|0.748	|0.592|	0.661	|1617|
-  |ORG	|0.444	|0.273|	0.338	|1661|
-  |LOC	|0.766	|0.695|	0.729	|1668|
   |MISC	|0.571	|0.541|	0.556	|702|
+  |ORG	|0.444	|0.273|	0.338	|1661|
+  |PER	|0.748	|0.592|	0.661	|1617|
+  |LOC	|0.766	|0.695|	0.729	|1668|
   |total|	0.659	|0.522|	0.583	|5648|
 
 ***
@@ -335,66 +341,70 @@ I simply run ```get_frequencies``` on the test set and print, ordered, the dicti
 **Write a function that extends the entity span to cover the full noun-compounds. Make use of compound dependency relation.**
 
 For this part I reused the ```get_accuracy``` function but, this time, with the ```expand``` flag set to True. In this setting the tokens with ```compound``` dependency will receive the same tag of their parents.  
-Initially I just took the first parent of the token, but after some thoughts it occured to me that multiple ancestors on the tree may have the ```compound``` dependency, so I updated the function to retrace the tree to take in account also the ancestors as I explained previously on the ```convert_spacy``` explanation.
+Initially I just took the first parent of the token, but after some thoughts it occured to me that multiple ancestors on the tree may have the ```compound``` dependency, so I updated the function to retrace the tree to take in account also the ancestors (the entire entity) as I explained previously on the ```convert_spacy``` explanation.
+
+> Note 1: To expand the named entity I took in account the fact that between the token and the head there could be another entity, I tested this and in test.txt it seems this is not the case, so I just check if the compound token has the same entity of the parent or an empty antity, if this is the case its tag is updated (this final update increases the performance of about 4%).  
+
+> Note 2: the expansion of the entity can be chosen in a smarter way, for example if we have a situation like ["B-ORG", "O", "O"] with the third token compound of the first, in the current setting, the output would be ["B-ORG", "O", "I-ORG"] (if the second token is not a compound). This setting can be updated to expand also the second token to have ["B-ORG", "I-ORG", "I-ORG"] which may lead to better performance.
 
 These are the results:
 ### Token level accuracy
 ```
-precision    recall  f1-score   support
+              precision    recall  f1-score   support
 
-       B-LOC       0.77      0.67      0.72      1668
+       B-LOC       0.77      0.69      0.73      1668
       B-MISC       0.57      0.57      0.57       702
-       B-ORG       0.43      0.34      0.38      1661
-       B-PER       0.62      0.64      0.63      1617
-       I-LOC       0.46      0.49      0.48       257
-      I-MISC       0.29      0.35      0.32       216
-       I-ORG       0.42      0.39      0.40       835
+       B-ORG       0.44      0.35      0.39      1661
+       B-PER       0.64      0.64      0.64      1617
+       I-LOC       0.47      0.50      0.48       257
+      I-MISC       0.30      0.35      0.32       216
+       I-ORG       0.43      0.40      0.41       835
        I-PER       0.81      0.74      0.77      1156
-           O       0.95      0.97      0.96     38554
+           O       0.95      0.97      0.96     38323
 
-    accuracy                           0.89     46666
-   macro avg       0.59      0.57      0.58     46666
-weighted avg       0.89      0.89      0.89     46666
+    accuracy                           0.89     46435
+   macro avg       0.60      0.58      0.59     46435
+weighted avg       0.89      0.89      0.89     46435
 ```
 ### Chunk level accuracy
 
-|     |  p	  |  r	  |  f	  | s  |
+|     |  p	  | r	   |   f	| s  |
 | -- | -- | -- | -- | -- |
-|PER	|0.549	|0.581	|0.565	|1617|
-|ORG	|0.332	|0.265	|0.295	|1661|
-|LOC	|0.733	|0.659	|0.694	|1668|
-|MISC	|0.554	|0.560	|0.557	|702|
-|total|	0.548	|0.509	|0.527	|5648|
+|MISC	|0.559	|0.566 |0.562	|702 |
+|ORG	|0.344	|0.278 |0.307	|1661|
+|PER	|0.573	|0.583 |0.578	|1617|
+|LOC	|0.730	|0.673 |0.700	|1668|
+|total|	0.558	|0.517 |0.537	|5648|
 
 As we can see, using this method, the performance slightly decreases.
 ***
 As final experiment, for curiosity, I tried not to retrace the tree (as I initially thought) in order to end on the direct parent of the token, this method seems better then the previous one with these results:
 ### Token level accuracy
 ```
-precision    recall  f1-score   support
+              precision    recall  f1-score   support
 
-       B-LOC       0.77      0.68      0.72      1668
-      B-MISC       0.57      0.58      0.57       702
-       B-ORG       0.43      0.34      0.38      1661
+       B-LOC       0.77      0.69      0.72      1668
+      B-MISC       0.57      0.58      0.58       702
+       B-ORG       0.43      0.35      0.38      1661
        B-PER       0.66      0.64      0.65      1617
        I-LOC       0.48      0.50      0.49       257
-      I-MISC       0.29      0.34      0.31       216
+      I-MISC       0.30      0.34      0.32       216
        I-ORG       0.44      0.39      0.42       835
        I-PER       0.81      0.74      0.78      1156
-           O       0.95      0.97      0.96     38554
+           O       0.95      0.97      0.96     38323
 
-    accuracy                           0.90     46666
-   macro avg       0.60      0.58      0.59     46666
-weighted avg       0.89      0.90      0.89     46666
+    accuracy                           0.90     46435
+   macro avg       0.60      0.58      0.59     46435
+weighted avg       0.89      0.90      0.89     46435
 ```
 
 ### Chunk level accuracy
-|     |  p	  |  r	  |  f	  |  s |
+|     |  p	  |  r	  |  f	  | s  |
 | -- | -- | -- | -- | -- |
-|PER	|0.587	|0.583	|0.585	|1617|
-|ORG	|0.330	|0.272	|0.298	|1661|
-|LOC	|0.732	|0.668	|0.699	|1668|
-|MISC	|0.552	|0.570	|0.561	|702|
-|total|	0.557	|0.515	|0.535	|5648|
+|MISC	|0.558	|0.573	|0.565	|702 |
+|ORG	|0.334	|0.276	|0.302	|1661|
+|PER	|0.593	|0.583	|0.588	|1617|
+|LOC	|0.729	|0.673	|0.700	|1668|
+|total|	0.560	|0.518	|0.538	|5648|
 
-As we can see the perfomance are similar with a slightly increase at chunk level, however this method does not have much sense since the ```IOB``` tag and named entity tag will be chosen without considering the whole span. 
+As we can see the perfomance are similar with a slightly increase at chunk level, however this method does not have much sense since the ```IOB``` tag and named entity tag will be chosen without considering the whole entity. 
