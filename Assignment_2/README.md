@@ -408,3 +408,5 @@ weighted avg       0.89      0.90      0.89     46435
 |total|	0.560	|0.518	|0.538	|5648|
 
 As we can see the perfomance are similar with a slightly increase at chunk level, however this method does not have much sense since the ```IOB``` tag and named entity tag will be chosen without considering the whole entity. 
+***
+> I noticed too late that my idea about assigning the IOB tag to the compound tokens has a bug, the IOB tag assigned is always "I" since we already have a "B" tag somewhere; to fix this the .i attribute can be used to understand the position of the tokens inside the entity to assign the correct IOB tag accordingly, then, in this situation, we should also change the head tag to "I" to maintain a correct matching in the entity.
