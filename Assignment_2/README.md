@@ -14,7 +14,7 @@ This function extracts the required information from the dataset: the sentences 
     * it reads the dataset using conll function
     * for each sentence it extracts the tokens as text or the tuple (token, name entity) 
 
-> Note: I removed the -DOCSTART- token from the dataset, however this token is not affect the predictions since it is always correctly classified.
+> Note: I removed the -DOCSTART- token from the dataset, however this token is not affecting the predictions since it is always correctly classified.
 
 ```python
 def import_dataset(path):
