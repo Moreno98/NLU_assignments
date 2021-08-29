@@ -5,3 +5,4 @@ The abstractive summarization notebook can be found here: [![Colab notebook](htt
 The extractive summarization notebook is available here: [![Colab notebook](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1zpCE3TNAM_cXPXH6jffoBXAZ_vWA3NF5?usp=sharing)  
 
 Both notebooks are ready to test the models and their performances, the comments contain instructions on how to train new models.
+The usage of a GPU is recommended.
